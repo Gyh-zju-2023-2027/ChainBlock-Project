@@ -140,7 +140,7 @@ contract BettingSystem {
         projectActive(projectId)
     {
         BettingProject storage project = bettingProjects[projectId - 1];
-        require(block.timestamp >= project.endTime, "Project has not ended yet");
+        // require(block.timestamp >= project.endTime, "Project has not ended yet"); // 注释掉以允许管理员随时开奖
         require(winnerOptionId < project.options.length, "Invalid winner option ID");
         require(project.winnerOptionId == 0, "Project already settled");
 

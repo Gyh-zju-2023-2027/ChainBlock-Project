@@ -380,9 +380,22 @@ const LotteryPage = () => {
             return
         }
 
+        if (winnerOption >= settleProject.options.length) {
+            message.error('请选择有效的获胜选项')
+            return
+        }
+
+        console.log('Settling project:', {
+            projectId: settleProject.id,
+            winnerOption: winnerOption,
+            winnerOptionText: settleProject.options[winnerOption]
+        })
+
         try {
             await bettingSystemContract.methods.settleProject(settleProject.id, winnerOption).send({
-                from: account
+                from: account,
+                gas: 500000,
+                gasPrice: web3.utils.toWei('20', 'gwei')
             })
 
             message.success('项目结算成功!')
@@ -393,7 +406,16 @@ const LotteryPage = () => {
             const ab = await myERC20Contract.methods.balanceOf(account).call()
             setAccountBalance(Number(ab))
         } catch (error: any) {
-            message.error(error.message)
+            console.error('Settle project error:', error)
+            if (error.message.includes('User denied transaction')) {
+                message.error('用户取消了交易')
+            } else if (error.message.includes('insufficient funds')) {
+                message.error('账户余额不足')
+            } else if (error.message.includes('execution reverted')) {
+                message.error('交易执行失败，请检查参数')
+            } else {
+                message.error(`结算失败: ${error.message}`)
+            }
         }
     }
 
@@ -613,7 +635,7 @@ const LotteryPage = () => {
                         renderItem={(project) => (
                             <List.Item
                                 actions={[
-                                    project.isActive && Date.now() / 1000 < project.endTime ? (
+                                    project.isActive && Date.now() / 1000 < project.endTime && account !== managerAccount ? (
                                         <Button
                                             type="primary"
                                             icon={<ShoppingCartOutlined />}
@@ -626,16 +648,33 @@ const LotteryPage = () => {
                                         </Button>
                                     ) : (
                                         project.isActive ? (
-                                            <Button
-                                                type="primary"
-                                                danger
-                                                onClick={() => {
-                                                    setSettleProject(project)
-                                                    setSettleModalVisible(true)
-                                                }}
-                                            >
-                                                结算项目
-                                            </Button>
+                                            account === managerAccount ? (
+                                                <Button
+                                                    type="primary"
+                                                    danger
+                                                    onClick={() => {
+                                                        setSettleProject(project)
+                                                        setSettleModalVisible(true)
+                                                    }}
+                                                >
+                                                    结算项目
+                                                </Button>
+                                            ) : (
+                                                Date.now() / 1000 < project.endTime ? (
+                                                    <Button
+                                                        type="primary"
+                                                        icon={<ShoppingCartOutlined />}
+                                                        onClick={() => {
+                                                            setSelectedProject(project)
+                                                            setBetModalVisible(true)
+                                                        }}
+                                                    >
+                                                        投注
+                                                    </Button>
+                                                ) : (
+                                                    <Tag color="orange">等待管理员结算</Tag>
+                                                )
+                                            )
                                         ) : (
                                             <Tag color="green">已结算</Tag>
                                         )
